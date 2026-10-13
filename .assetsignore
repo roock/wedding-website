@@ -1,0 +1,42 @@
+# .assetsignore for Cloudflare Pages with SvelteKit
+# 
+# This file must be in the root of the asset directory (.svelte-kit/cloudflare/)
+# to prevent Cloudflare Pages from serving sensitive files as static assets.
+#
+# Purpose: Tell Cloudflare Pages which files should NOT be served to the public.
+# The build script copies this file to .svelte-kit/cloudflare/ during build.
+
+# Exclude Worker source maps (debugging only, not needed at runtime)
+*.map
+_worker.js.map
+
+# DO NOT exclude _worker.js - it's required by Cloudflare Pages Functions
+
+# Exclude Node.js config files (shouldn't be present in deployed directory)
+package.json
+package-lock.json
+
+# Exclude build configuration files
+wrangler*.toml
+vite.config.js
+tailwind.config.js
+postcss.config.js
+eslint.config.js
+
+# Exclude environment and secret files
+.env
+.env.*
+.prettierrc
+
+# Exclude version control metadata
+.git
+.gitattributes
+.gitignore
+
+# Exclude development tools and directories
+.vscode
+.wrangler
+node_modules
+
+# Exclude this file itself from being served
+.assetsignore
