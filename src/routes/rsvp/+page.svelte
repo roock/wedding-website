@@ -57,7 +57,7 @@
   // Load form settings on mount
   onMount(async () => {
     try {
-      const response = await fetch(`/api/admin/form-settings?language=${$page.data.settings.language || 'en'}`);
+      const response = await fetch('/api/admin/form-settings');
       if (response.ok) {
         const data = await response.json();
         formSettings.set(data);
