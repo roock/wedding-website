@@ -48,7 +48,7 @@
 
   {#if data.settings.showCountdown}
     <div class="text-2xl mb-8">
-      {daysUntil} days until our wedding
+      {daysUntil} {data.settings.language === 'de' ? data.settings.countdownText_de : data.settings.countdownText}
     </div>
   {/if}
 

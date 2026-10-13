@@ -57,7 +57,7 @@
   // Load form settings on mount
   onMount(async () => {
     try {
-      const response = await fetch('/api/admin/form-settings');
+      const response = await fetch(`/api/admin/form-settings?language=${$page.data.settings.language || 'en'}`);
       if (response.ok) {
         const data = await response.json();
         formSettings.set(data);
@@ -200,16 +200,24 @@
 </svelte:head>
 
 <div class="max-w-2xl mx-auto px-4 py-12">
-  <h1 class="text-4xl text-center font-light mb-12">RSVP</h1>
+  <h1 class="text-4xl text-center font-light mb-12">
+    {$page.data.settings.language === 'de' ? 'Zusage' : 'RSVP'}
+  </h1>
 
   {#if submitted}
     <div class="text-center py-12 bg-white rounded-lg shadow-sm">
-      <h2 class="text-2xl mb-4">Thank you for your RSVP!</h2>
+      <h2 class="text-2xl mb-4">
+        {$page.data.settings.language === 'de'
+          ? 'Vielen Dank für deine Zusage!'
+          : 'Thank you for your RSVP!'}
+      </h2>
       <p class="text-gray-600">
         {#if isUpdate}
-          Your RSVP has been successfully updated.
+          {$page.data.settings.language === 'de'
+            ? 'Deine Zusage wurde erfolgreich aktualisiert.'
+            : 'Your RSVP has been successfully updated.'}
         {:else}
-          We're excited to celebrate with you!
+          {$page.data.settings.language === 'de' ? 'Wir freuen uns, mit dir zu feiern!' : "We're excited to celebrate with you!"}
         {/if}
       </p>
       {#if isUpdate}
@@ -221,7 +229,7 @@
             error = null;
           }}
         >
-          Make another change
+          {$page.data.settings.language === 'de' ? 'Eine weitere Änderung vornehmen' : 'Make another change'}
         </button>
       {/if}
     </div>

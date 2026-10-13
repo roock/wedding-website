@@ -4,6 +4,7 @@
   import { onMount } from 'svelte';
 
   let settings = {
+    language: 'en',
     weddingDate: '',
     weddingTime: '',
     venueName: '',
@@ -12,6 +13,8 @@
     brideName: '',
     showCountdown: true,
     restrictToHomePage: true,
+    countdownText: 'days until our wedding',
+    countdownText_de: 'Tage bis zu unserer Hochzeit',
     nameOrder: 'groom-first',
     rsvpButtonText: 'RSVP Now',
     rsvpButtonLink: '/rsvp',
@@ -156,6 +159,21 @@
   <form on:submit|preventDefault={saveSettings} class="space-y-6">
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div>
+        <label for="language" class="block text-sm font-medium text-gray-700 mb-1">
+          Site Language
+        </label>
+        <select
+          id="language"
+          bind:value={settings.language}
+          class="w-full p-2 border rounded"
+          required
+        >
+          <option value="en">English</option>
+          <option value="de">Deutsch (German)</option>
+        </select>
+      </div>
+
+      <div>
         <label for="groomName" class="block text-sm font-medium text-gray-700 mb-1">
           Groom's Name
         </label>
@@ -258,6 +276,32 @@
           />
           <span class="text-sm font-medium text-gray-700">Show Countdown on Home Page</span>
         </label>
+      </div>
+
+      <div>
+        <label for="countdownText" class="block text-sm font-medium text-gray-700 mb-1">
+          Countdown Text (English)
+        </label>
+        <input
+          type="text"
+          id="countdownText"
+          bind:value={settings.countdownText}
+          class="w-full p-2 border rounded"
+          placeholder="days until our wedding"
+        />
+      </div>
+
+      <div>
+        <label for="countdownText_de" class="block text-sm font-medium text-gray-700 mb-1">
+          Countdown Text (German)
+        </label>
+        <input
+          type="text"
+          id="countdownText_de"
+          bind:value={settings.countdownText_de}
+          class="w-full p-2 border rounded"
+          placeholder="Tage bis zu unserer Hochzeit"
+        />
       </div>
 
       <div class="md:col-span-2">
