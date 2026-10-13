@@ -19,10 +19,10 @@ export async function load({ url, platform, fetch }) {
     rsvpButtonText: 'RSVP Now',
     rsvpButtonLink: '/rsvp',
     defaultPages: [
-      { id: 'home', name: 'Home', slug: '', order: 0 },
-      { id: 'gallery', name: 'Gallery', slug: 'gallery', order: 1 },
-      { id: 'rsvp', name: 'RSVP', slug: 'rsvp', order: 2 },
-      { id: 'registry', name: 'Registry', slug: 'registry', order: 3 }
+      { id: 'home', name: 'Home', slug: '', order: 0, hidden: false },
+      { id: 'gallery', name: 'Gallery', slug: 'gallery', order: 1, hidden: false },
+      { id: 'rsvp', name: 'RSVP', slug: 'rsvp', order: 2, hidden: false },
+      { id: 'registry', name: 'Registry', slug: 'registry', order: 3, hidden: false }
     ]
   };
 
