@@ -30,7 +30,8 @@
   // Format wedding date
   $: {
     const date = new Date(`${data.settings.weddingDate}T${data.settings.weddingTime}`);
-    formattedDate = date.toLocaleDateString('en-US', {
+    const locale = data.settings.language === 'de' ? 'de-DE' : 'en-US';
+    formattedDate = date.toLocaleDateString(locale, {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
