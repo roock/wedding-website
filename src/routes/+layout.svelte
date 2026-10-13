@@ -53,15 +53,19 @@
       const pagesData = await pagesResponse.json();
       const customPages = pagesData.pages.sort((a, b) => a.order - b.order);
 
-      // Get default pages from settings
-      const defaultPages = data.settings.defaultPages.sort((a, b) => a.order - b.order);
+      // Get default pages from settings, filter out hidden ones
+      const defaultPages = data.settings.defaultPages
+        .filter((page) => !page.hidden)
+        .sort((a, b) => a.order - b.order);
 
-      // Combine and sort all pages
+      // Combine and sort all pages (excluding hidden pages)
       allPages = [...defaultPages, ...customPages].sort((a, b) => a.order - b.order);
     } catch (error) {
       console.error('Error loading pages:', error);
-      // If there's an error, use the default pages from settings
-      allPages = data.settings.defaultPages.sort((a, b) => a.order - b.order);
+      // If there's an error, use the default pages from settings (excluding hidden)
+      allPages = data.settings.defaultPages
+        .filter((page) => !page.hidden)
+        .sort((a, b) => a.order - b.order);
     }
   }
 
