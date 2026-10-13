@@ -16,10 +16,10 @@
     rsvpButtonText: 'RSVP Now',
     rsvpButtonLink: '/rsvp',
     defaultPages: [
-      { id: 'home', name: 'Home', slug: '', order: 0 },
-      { id: 'gallery', name: 'Gallery', slug: 'gallery', order: 1 },
-      { id: 'rsvp', name: 'RSVP', slug: 'rsvp', order: 2 },
-      { id: 'registry', name: 'Registry', slug: 'registry', order: 3 }
+      { id: 'home', name: 'Home', slug: '', order: 0, hidden: false },
+      { id: 'gallery', name: 'Gallery', slug: 'gallery', order: 1, hidden: false },
+      { id: 'rsvp', name: 'RSVP', slug: 'rsvp', order: 2, hidden: false },
+      { id: 'registry', name: 'Registry', slug: 'registry', order: 3, hidden: false }
     ]
   };
 
@@ -72,6 +72,14 @@
       if (!response.ok) throw new Error('Failed to load settings');
       const data = await response.json();
       settings = { ...settings, ...data.settings };
+      
+      // Ensure all default pages have the hidden property
+      if (settings.defaultPages) {
+        settings.defaultPages = settings.defaultPages.map((page) => ({
+          ...page,
+          hidden: page.hidden ?? false
+        }));
+      }
     } catch (err) {
       error = err.message;
       console.error('Error loading settings:', err);
@@ -301,6 +309,14 @@
                 class="w-20 p-2 border rounded"
                 placeholder="Order"
               />
+              <label class="flex items-center space-x-2 whitespace-nowrap">
+                <input
+                  type="checkbox"
+                  bind:checked={page.hidden}
+                  class="form-checkbox h-4 w-4 text-primary"
+                />
+                <span class="text-sm font-medium text-gray-600">Hide</span>
+              </label>
             </div>
           {/each}
         </div>
