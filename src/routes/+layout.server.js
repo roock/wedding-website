@@ -62,7 +62,16 @@ export async function load({ url, platform, fetch }) {
   }
 
   try {
-    // Try to get settings from KV
+    // Try to get settings from KV (only available in server environment with bindings)
+    if (!platform?.env?.IMAGES_KV) {
+      return {
+        theme,
+        settings: defaultSettings,
+        isPreview,
+        pathname: url.pathname
+      };
+    }
+
     const settings = await platform.env.IMAGES_KV.get('wedding_settings', 'json');
 
     // If no settings exist, return defaults

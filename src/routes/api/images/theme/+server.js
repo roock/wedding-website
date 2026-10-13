@@ -9,28 +9,33 @@ export async function GET({ platform }) {
       headers: { 'Content-Type': 'application/json' }
     });
 
-  try {
-    // Fetch the theme settings from KV
-    const themeData = await platform.env.IMAGES_KV.get('site_theme');
+  // Default theme settings
+  const defaultTheme = {
+    colors: {
+      primary: '#000000', // Default black
+      secondary: '#666666', // Default gray
+      accent: '#f3f4f6', // Default light gray
+      text: '#333333', // Default text color
+      background: '#ffffff' // Default background
+    },
+    fonts: {
+      heading: 'sans-serif',
+      body: 'sans-serif'
+    },
+    favicon: {
+      url: '/favicon.png',
+      uploaded: false
+    }
+  };
 
-    // Default theme settings
-    const defaultTheme = {
-      colors: {
-        primary: '#000000', // Default black
-        secondary: '#666666', // Default gray
-        accent: '#f3f4f6', // Default light gray
-        text: '#333333', // Default text color
-        background: '#ffffff' // Default background
-      },
-      fonts: {
-        heading: 'sans-serif',
-        body: 'sans-serif'
-      },
-      favicon: {
-        url: '/favicon.png',
-        uploaded: false
-      }
-    };
+  try {
+    // Fetch the theme settings from KV (only available in server environment)
+    if (!platform?.env?.IMAGES_KV) {
+      console.log(`[${requestId}] Platform bindings not available, returning default`);
+      return jsonResponse({ theme: defaultTheme });
+    }
+
+    const themeData = await platform.env.IMAGES_KV.get('site_theme');
 
     if (!themeData) {
       // If no theme is saved yet, return the default theme

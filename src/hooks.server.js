@@ -9,8 +9,11 @@ export async function handle({ event, resolve }) {
     return resolve(event);
   }
 
-  // Get settings from KV store
-  const settings = await event.platform.env.IMAGES_KV.get('wedding_settings', 'json');
+  // Get settings from KV store (only available when platform env is available)
+  let settings = null;
+  if (event.platform?.env?.IMAGES_KV) {
+    settings = await event.platform.env.IMAGES_KV.get('wedding_settings', 'json');
+  }
 
   // If restrictToHomePage is true and it's not the home page or about page, redirect to home page
   if (settings?.restrictToHomePage && !isHomePage && !isAboutPage) {
