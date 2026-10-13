@@ -83,6 +83,14 @@
           hidden: page.hidden ?? false
         }));
       }
+
+      // Ensure countdown text has defaults
+      if (!settings.countdownText) {
+        settings.countdownText = 'days until our wedding';
+      }
+      if (!settings.countdownText_de) {
+        settings.countdownText_de = 'Tage bis zu unserer Hochzeit';
+      }
     } catch (err) {
       error = err.message;
       console.error('Error loading settings:', err);
@@ -157,22 +165,22 @@
   {/if}
 
   <form on:submit|preventDefault={saveSettings} class="space-y-6">
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <div>
-        <label for="language" class="block text-sm font-medium text-gray-700 mb-1">
-          Site Language
-        </label>
-        <select
-          id="language"
-          bind:value={settings.language}
-          class="w-full p-2 border rounded"
-          required
-        >
-          <option value="en">English</option>
-          <option value="de">Deutsch (German)</option>
-        </select>
-      </div>
+    <div class="md:col-span-2">
+      <label for="language" class="block text-sm font-medium text-gray-700 mb-1">
+        Site Language
+      </label>
+      <select
+        id="language"
+        bind:value={settings.language}
+        class="w-full max-w-sm p-2 border rounded"
+        required
+      >
+        <option value="en">English</option>
+        <option value="de">Deutsch (German)</option>
+      </select>
+    </div>
 
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div>
         <label for="groomName" class="block text-sm font-medium text-gray-700 mb-1">
           Groom's Name
