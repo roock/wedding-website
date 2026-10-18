@@ -3,12 +3,13 @@
   import AdminNav from '$lib/components/AdminNav.svelte';
   import { onMount } from 'svelte';
   import { writable } from 'svelte/store';
-  import { getAllImageLocationIds, getImageLocationName } from '$lib/imageLocations';
 
   // Initialize the stores
   let images = writable([]);
   let assignments = writable({});
-  let locationOptions = getAllImageLocationIds();
+  // Pages of this site (default + custom); image assignments use the page id as the location id
+  let pageOptions = [];
+  let pageNames = {};
 
   // UI state variables
   let selectedFile = null;
@@ -33,8 +34,32 @@
 
   // Fetch both images and assignments on mount
   onMount(async () => {
-    await Promise.all([fetchImages(), fetchAssignments()]);
+    await Promise.all([fetchImages(), fetchAssignments(), fetchPageOptions()]);
   });
+
+  async function fetchPageOptions() {
+    try {
+      const [pagesResponse, settingsResponse] = await Promise.all([
+        fetch('/api/admin/pages'),
+        fetch('/api/admin/settings')
+      ]);
+      if (!pagesResponse.ok || !settingsResponse.ok) throw new Error('Failed to load pages');
+
+      const { pages: customPages } = await pagesResponse.json();
+      const { settings } = await settingsResponse.json();
+      const defaultPages = (settings.defaultPages || []).filter((page) => !page.hidden);
+
+      pageOptions = [...defaultPages, ...customPages].sort((a, b) => a.order - b.order);
+      pageNames = Object.fromEntries(pageOptions.map((page) => [page.id, page.name]));
+    } catch (err) {
+      console.error('Failed to load pages for assignment:', err);
+      error = 'Failed to load pages';
+    }
+  }
+
+  function getPageName(pageId) {
+    return pageNames[pageId] || pageId;
+  }
 
   async function fetchImages() {
     fetching = true;
@@ -123,7 +148,7 @@
 
     if (usedLocations.length > 0) {
       const confirmDelete = confirm(
-        `This image is currently assigned to: ${usedLocations.map((loc) => getImageLocationName(loc)).join(', ')}.\n\nDeleting it will remove these assignments. Continue?`
+        `This image is currently assigned to: ${usedLocations.map((loc) => getPageName(loc)).join(', ')}.\n\nDeleting it will remove these assignments. Continue?`
       );
 
       if (!confirmDelete) {
@@ -320,9 +345,9 @@
       assignments.set(data.assignments);
 
       // Store the location name before closing the modal
-      const locationName = getImageLocationName(selectedLocationId) || 'selected location';
+      const pageName = getPageName(selectedLocationId) || 'selected page';
       closeAssignmentModal();
-      alert(`Image successfully assigned to ${locationName}`);
+      alert(`Image successfully assigned to ${pageName}`);
     } catch (err) {
       console.error('Failed to assign image:', err);
       error = 'Failed to assign image';
@@ -402,7 +427,7 @@
     }
 
     if (locations.length === 1) {
-      return `Assigned to: ${getImageLocationName(locations[0])}`;
+      return `Assigned to: ${getPageName(locations[0])}`;
     }
 
     return `Assigned to ${locations.length} locations`;
@@ -630,9 +655,9 @@
             bind:value={selectedLocationId}
             class="w-full p-2 border rounded"
           >
-            <option value="">Select a location...</option>
-            {#each locationOptions as locationId}
-              <option value={locationId}>{getImageLocationName(locationId)}</option>
+            <option value="">Select a page...</option>
+            {#each pageOptions as page (page.id)}
+              <option value={page.id}>{page.name}</option>
             {/each}
           </select>
 
@@ -673,19 +698,19 @@
           </p>
 
           <div class="max-h-60 overflow-y-auto border rounded p-2">
-            {#each locationOptions as locationId}
+            {#each pageOptions as page (page.id)}
               <div class="py-2 border-b last:border-b-0">
                 <label class="flex items-center space-x-2">
                   <input
                     type="checkbox"
-                    checked={selectedLocationIds.includes(locationId)}
-                    on:change={() => toggleLocationSelection(locationId)}
+                    checked={selectedLocationIds.includes(page.id)}
+                    on:change={() => toggleLocationSelection(page.id)}
                     class="form-checkbox"
                   />
-                  <span>{getImageLocationName(locationId)}</span>
+                  <span>{page.name}</span>
                 </label>
 
-                {#if $assignments[locationId] && $assignments[locationId] !== selectedImageId.replace('image:', '')}
+                {#if $assignments[page.id] && $assignments[page.id] !== selectedImageId.replace('image:', '')}
                   <p class="ml-6 mt-1 text-yellow-600 text-xs">
                     This location already has an assigned image. Selecting it will replace the
                     current assignment.
