@@ -18,10 +18,10 @@ export const translations = {
     // Homepage countdown
     daysUntilWedding: 'Tage bis zu unserer Hochzeit',
     // RSVP page
-    rsvpHeading: 'Zusage',
-    thankYouHeading: 'Vielen Dank für deine Zusage!',
+    rsvpHeading: 'Antwort',
+    thankYouHeading: 'Vielen Dank für deine Antwort!',
     thankYouMessage: 'Wir freuen uns, mit dir zu feiern!',
-    thankYouUpdateMessage: 'Deine Zusage wurde erfolgreich aktualisiert.',
+    thankYouUpdateMessage: 'Deine Antwort wurde erfolgreich aktualisiert.',
     makeAnotherChange: 'Eine weitere Änderung vornehmen'
   }
 };

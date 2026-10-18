@@ -133,18 +133,18 @@
 
 <div class="max-w-2xl mx-auto px-4 py-12">
   <h1 class="text-4xl text-center font-light mb-12">
-    {isGerman ? 'Zusage' : 'RSVP'}
+    {isGerman ? 'Antwort' : 'RSVP'}
   </h1>
 
   {#if submitted}
     <div class="text-center py-12 bg-white rounded-lg shadow-sm">
       <h2 class="text-2xl mb-4">
-        {isGerman ? 'Vielen Dank für deine Zusage!' : 'Thank you for your RSVP!'}
+        {isGerman ? 'Vielen Dank für deine Antwort!' : 'Thank you for your RSVP!'}
       </h2>
       <p class="text-gray-600">
         {#if isUpdate}
           {isGerman
-            ? 'Deine Zusage wurde erfolgreich aktualisiert.'
+            ? 'Deine Antwort wurde erfolgreich aktualisiert.'
             : 'Your RSVP has been successfully updated.'}
         {:else}
           {isGerman ? 'Wir freuen uns, mit dir zu feiern!' : "We're excited to celebrate with you!"}
@@ -171,7 +171,7 @@
       <GuestRsvpFields
         guest={primary}
         idPrefix="primary"
-        title={isGerman ? 'Deine Zusage' : 'Your RSVP'}
+        title={isGerman ? 'Deine Antwort' : 'Your RSVP'}
         isPrimary={true}
       />
 
@@ -204,7 +204,7 @@
               ? 'Wird eingereicht...'
               : 'Submitting...'
             : isGerman
-              ? 'Zusage einreichen'
+              ? 'Antwort einreichen'
               : 'Submit RSVP'}
         </button>
       </div>
