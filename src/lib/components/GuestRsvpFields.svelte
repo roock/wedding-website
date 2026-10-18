@@ -70,7 +70,7 @@
 
   <div class="space-y-2">
     <label for="{idPrefix}-email" class="block">
-      {text('emailLabel')} (optional)
+      {text('emailLabel')}
     </label>
     <input
       type="email"
