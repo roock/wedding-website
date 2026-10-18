@@ -1,9 +1,10 @@
 <!-- src/routes/rsvp/+page.svelte -->
 <script>
   import { formSettings } from '$lib/stores/formSettings';
-  import { onMount } from 'svelte';
   import { page } from '$app/stores';
   import GuestRsvpFields from '$lib/components/GuestRsvpFields.svelte';
+
+  export let data;
 
   // Compute couple names based on order preference
   $: coupleNames =
@@ -34,21 +35,10 @@
   let isUpdate = false;
   let error = null;
 
-  // Load form settings on mount
-  onMount(async () => {
-    try {
-      const response = await fetch('/api/admin/form-settings');
-      if (response.ok) {
-        const data = await response.json();
-        formSettings.set(data);
-      } else {
-        // If the API call fails, use default settings
-        console.warn('Failed to load form settings, using defaults');
-      }
-    } catch (error) {
-      console.warn('Failed to load form settings, using defaults:', error);
-    }
-  });
+  // Form settings come from the server load function; keep store defaults if none are saved
+  if (data.formSettings) {
+    formSettings.set(data.formSettings);
+  }
 
   function addGuest() {
     guests = [...guests, { key: nextGuestKey++, ...emptyGuest() }];
