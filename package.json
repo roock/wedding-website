@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev": "vite dev",
-    "build": "vite build",
+    "build": "vite build && cp .assetsignore .svelte-kit/cloudflare/",
     "preview": "vite preview",
     "lint": "eslint ."
   },

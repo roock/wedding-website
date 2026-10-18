@@ -51,16 +51,16 @@ export async function POST({ request, platform }) {
     `
     )
       .bind(
-        settings.nameLabel,
-        settings.emailLabel,
-        settings.attendanceQuestion,
-        settings.additionalGuestsLabel,
-        settings.vegetarianQuestion,
-        settings.foodAllergiesLabel,
-        settings.lodgingQuestion,
-        settings.transportQuestion,
-        settings.songRequestLabel,
-        settings.specialNotesLabel
+        settings.nameLabel || 'Full Name',
+        settings.emailLabel || 'Email',
+        settings.attendanceQuestion || 'Will you be attending?',
+        settings.additionalGuestsLabel || 'Number of Additional Guests',
+        settings.vegetarianQuestion || 'Are you vegetarian?',
+        settings.foodAllergiesLabel || 'Any food allergies?',
+        settings.lodgingQuestion || 'Are you planning on staying at the lodging?',
+        settings.transportQuestion || 'Are you planning on joining the transport to and from our lodging?',
+        settings.songRequestLabel || 'What song will get you on the dance floor?',
+        settings.specialNotesLabel || 'Any special note for the couple?'
       )
       .run();
 

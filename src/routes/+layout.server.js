@@ -8,6 +8,7 @@ export async function load({ url, platform, fetch }) {
 
   // Default settings if none exist in KV
   const defaultSettings = {
+    language: 'en', // 'en' or 'de'
     weddingDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days from now
     weddingTime: '16:00',
     venueName: 'Wedding Venue',
@@ -15,6 +16,8 @@ export async function load({ url, platform, fetch }) {
     groomName: "Groom's Name",
     brideName: "Bride's Name",
     showCountdown: true,
+    countdownText: 'days until our wedding',
+    countdownText_de: 'Tage bis zu unserer Hochzeit',
     nameOrder: 'groom-first', // 'groom-first' or 'bride-first'
     rsvpButtonText: 'RSVP Now',
     rsvpButtonLink: '/rsvp',

@@ -128,7 +128,9 @@
 
   async function handleSubmit() {
     if (!guestInfo) {
-      error = 'Please search and select your name from the guest list';
+      error = $page.data.settings.language === 'de'
+        ? 'Bitte suche und wähle deinen Namen aus der Gästeliste aus'
+        : 'Please search and select your name from the guest list';
       return;
     }
 
@@ -149,7 +151,9 @@
     }
 
     if (missingPrimary.length > 0 || missingPartner.length > 0) {
-      error = 'Please answer all required yes/no questions before submitting.';
+      error = $page.data.settings.language === 'de'
+        ? 'Bitte beantworte alle erforderlichen Fragen vor dem Absenden.'
+        : 'Please answer all required questions before submitting.';
       return;
     }
 
@@ -200,16 +204,24 @@
 </svelte:head>
 
 <div class="max-w-2xl mx-auto px-4 py-12">
-  <h1 class="text-4xl text-center font-light mb-12">RSVP</h1>
+  <h1 class="text-4xl text-center font-light mb-12">
+    {$page.data.settings.language === 'de' ? 'Zusage' : 'RSVP'}
+  </h1>
 
   {#if submitted}
     <div class="text-center py-12 bg-white rounded-lg shadow-sm">
-      <h2 class="text-2xl mb-4">Thank you for your RSVP!</h2>
+      <h2 class="text-2xl mb-4">
+        {$page.data.settings.language === 'de'
+          ? 'Vielen Dank für deine Zusage!'
+          : 'Thank you for your RSVP!'}
+      </h2>
       <p class="text-gray-600">
         {#if isUpdate}
-          Your RSVP has been successfully updated.
+          {$page.data.settings.language === 'de'
+            ? 'Deine Zusage wurde erfolgreich aktualisiert.'
+            : 'Your RSVP has been successfully updated.'}
         {:else}
-          We're excited to celebrate with you!
+          {$page.data.settings.language === 'de' ? 'Wir freuen uns, mit dir zu feiern!' : "We're excited to celebrate with you!"}
         {/if}
       </p>
       {#if isUpdate}
@@ -221,7 +233,7 @@
             error = null;
           }}
         >
-          Make another change
+          {$page.data.settings.language === 'de' ? 'Eine weitere Änderung vornehmen' : 'Make another change'}
         </button>
       {/if}
     </div>
@@ -242,7 +254,7 @@
             autocomplete="off"
             class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-opacity-50"
             style="focus-ring-color: var(--color-primary)"
-            placeholder="Search your name..."
+            placeholder={$page.data.settings.language === 'de' ? 'Nach deinem Namen suchen...' : 'Search your name...'}
           />
           {#if searching}
             <div class="absolute right-2 top-2">
@@ -321,11 +333,11 @@
                     class="mr-2"
                     required
                   />
-                  Yes
+                  {$page.data.settings.language === 'de' ? 'Ja' : 'Yes'}
                 </label>
                 <label class="inline-flex items-center">
                   <input type="radio" bind:group={formData.attending} value="no" class="mr-2" />
-                  No
+                  {$page.data.settings.language === 'de' ? 'Nein' : 'No'}
                 </label>
               </div>
             </div>
@@ -342,7 +354,7 @@
                       class="mr-2"
                       required
                     />
-                    Yes
+                    {$page.data.settings.language === 'de' ? 'Ja' : 'Yes'}
                   </label>
                   <label class="inline-flex items-center">
                     <input
@@ -351,7 +363,7 @@
                       value="no"
                       class="mr-2"
                     />
-                    No
+                    {$page.data.settings.language === 'de' ? 'Nein' : 'No'}
                   </label>
                 </div>
               </div>
@@ -384,11 +396,11 @@
                       class="mr-2"
                       required
                     />
-                    Yes
+                    {$page.data.settings.language === 'de' ? 'Ja' : 'Yes'}
                   </label>
                   <label class="inline-flex items-center">
                     <input type="radio" bind:group={formData.lodging} value="no" class="mr-2" />
-                    No
+                    {$page.data.settings.language === 'de' ? 'Nein' : 'No'}
                   </label>
                 </div>
               </div>
@@ -407,7 +419,7 @@
                       class="mr-2"
                       required
                     />
-                    Yes
+                    {$page.data.settings.language === 'de' ? 'Ja' : 'Yes'}
                   </label>
                   <label class="inline-flex items-center">
                     <input
@@ -416,7 +428,7 @@
                       value="no"
                       class="mr-2"
                     />
-                    No
+                    {$page.data.settings.language === 'de' ? 'Nein' : 'No'}
                   </label>
                 </div>
               </div>
@@ -474,7 +486,7 @@
                       class="mr-2"
                       required
                     />
-                    Yes
+                    {$page.data.settings.language === 'de' ? 'Ja' : 'Yes'}
                   </label>
                   <label class="inline-flex items-center">
                     <input
@@ -483,7 +495,7 @@
                       value="no"
                       class="mr-2"
                     />
-                    No
+                    {$page.data.settings.language === 'de' ? 'Nein' : 'No'}
                   </label>
                 </div>
               </div>
@@ -505,7 +517,7 @@
                         class="mr-2"
                         required
                       />
-                      Yes
+                      {$page.data.settings.language === 'de' ? 'Ja' : 'Yes'}
                     </label>
                     <label class="inline-flex items-center">
                       <input
@@ -514,7 +526,7 @@
                         value="no"
                         class="mr-2"
                       />
-                      No
+                      {$page.data.settings.language === 'de' ? 'Nein' : 'No'}
                     </label>
                   </div>
                 </div>
@@ -550,7 +562,7 @@
                         class="mr-2"
                         required
                       />
-                      Yes
+                      {$page.data.settings.language === 'de' ? 'Ja' : 'Yes'}
                     </label>
                     <label class="inline-flex items-center">
                       <input
@@ -559,7 +571,7 @@
                         value="no"
                         class="mr-2"
                       />
-                      No
+                      {$page.data.settings.language === 'de' ? 'Nein' : 'No'}
                     </label>
                   </div>
                 </div>
@@ -583,7 +595,7 @@
                         class="mr-2"
                         required
                       />
-                      Yes
+                      {$page.data.settings.language === 'de' ? 'Ja' : 'Yes'}
                     </label>
                     <label class="inline-flex items-center">
                       <input
@@ -592,7 +604,7 @@
                         value="no"
                         class="mr-2"
                       />
-                      No
+                      {$page.data.settings.language === 'de' ? 'Nein' : 'No'}
                     </label>
                   </div>
                 </div>
@@ -636,13 +648,17 @@
               disabled={submitting}
               class="w-full bg-primary text-white px-4 py-2 rounded hover:bg-primary/90 transition-colors disabled:opacity-50"
             >
-              {submitting ? 'Submitting...' : 'Submit RSVP'}
+              {submitting ? ($page.data.settings.language === 'de' ? 'Wird eingereicht...' : 'Submitting...') : ($page.data.settings.language === 'de' ? 'Zusage einreichen' : 'Submit RSVP')}
             </button>
           </div>
         </div>
       {:else}
         <div class="text-center py-8 text-gray-500">
-          <p>Please search and select your name to continue with your RSVP.</p>
+          <p>
+            {$page.data.settings.language === 'de'
+              ? 'Bitte suche deinen Namen und wähle ihn aus, um mit deiner Zusage fortzufahren.'
+              : 'Please search and select your name to continue with your RSVP.'}
+          </p>
         </div>
       {/if}
 

@@ -30,7 +30,8 @@
   // Format wedding date
   $: {
     const date = new Date(`${data.settings.weddingDate}T${data.settings.weddingTime}`);
-    formattedDate = date.toLocaleDateString('en-US', {
+    const locale = data.settings.language === 'de' ? 'de-DE' : 'en-US';
+    formattedDate = date.toLocaleDateString(locale, {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
@@ -46,9 +47,9 @@
 <div class="min-h-screen flex flex-col items-center justify-center p-4">
   <h1 class="text-4xl font-bold mb-8">{coupleNames}</h1>
 
-  {#if data.settings.showCountdown}
+  {#if data.settings.showCountdown && data.settings.countdownText}
     <div class="text-2xl mb-8">
-      {daysUntil} days until our wedding
+      {daysUntil} {data.settings.language === 'de' ? (data.settings.countdownText_de || 'Tage bis zu unserer Hochzeit') : (data.settings.countdownText || 'days until our wedding')}
     </div>
   {/if}
 
