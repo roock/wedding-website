@@ -1,5 +1,4 @@
 // src/lib/imageAssignments.js
-import { IMAGE_LOCATIONS } from './imageLocations';
 
 /**
  * The data structure stored in KV will be:
@@ -7,14 +6,28 @@ import { IMAGE_LOCATIONS } from './imageLocations';
  * KV Keys:
  * - "gallery_order": Array of image IDs in display order for the gallery
  * - "image:{uuid}": Metadata for a specific image including r2_key, alt text, etc.
- * - "image_assignments": Object mapping location IDs to image IDs
+ * - "image_assignments": Object mapping page IDs to image IDs
  *
  * Example image_assignments structure:
  * {
- *   "story_how_we_met": "550e8400-e29b-41d4-a716-446655440000",
- *   "details_venue": "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+ *   "gallery": "550e8400-e29b-41d4-a716-446655440000",
+ *   "page-builder-abc123": "7c9e6679-7425-40de-944b-e07fc1f90ae7"
  * }
  */
+
+/**
+ * Returns the IDs of all pages on this site (default pages from settings + custom pages)
+ */
+async function getValidPageIds(platform) {
+  const [pagesList, settings] = await Promise.all([
+    platform.env.IMAGES_KV.get('page_builder_pages_list', 'json'),
+    platform.env.IMAGES_KV.get('wedding_settings', 'json')
+  ]);
+
+  const defaultIds = (settings?.defaultPages || []).map((page) => page.id);
+  const customIds = (pagesList || []).map((page) => page.id);
+  return new Set([...defaultIds, ...customIds]);
+}
 
 /**
  * Fetches all current image assignments
@@ -28,9 +41,10 @@ export async function fetchImageAssignments(platform) {
  * Updates an image assignment
  */
 export async function assignImage(platform, locationId, imageId) {
-  // Validate the location ID is recognized
-  if (!Object.values(IMAGE_LOCATIONS).includes(locationId)) {
-    throw new Error(`Invalid location ID: ${locationId}`);
+  // Validate the page ID belongs to this site
+  const validPageIds = await getValidPageIds(platform);
+  if (!validPageIds.has(locationId)) {
+    throw new Error(`Invalid page ID: ${locationId}`);
   }
 
   // Get current assignments
