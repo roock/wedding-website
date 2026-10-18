@@ -18,7 +18,7 @@
 /**
  * Returns the IDs of all pages on this site (default pages from settings + custom pages)
  */
-async function getValidPageIds(platform) {
+export async function getValidPageIds(platform) {
   const [pagesList, settings] = await Promise.all([
     platform.env.IMAGES_KV.get('page_builder_pages_list', 'json'),
     platform.env.IMAGES_KV.get('wedding_settings', 'json')
