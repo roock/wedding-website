@@ -67,10 +67,10 @@
 
   {#if !data.settings.restrictToHomePage}
     <a
-      href="/rsvp"
+      href={data.settings.rsvpButtonLink}
       class="bg-primary text-white px-8 py-3 rounded-full text-lg hover:bg-primary/90 transition-colors"
     >
-      RSVP
+      {data.settings.rsvpButtonText}
     </a>
   {/if}
 </div>
