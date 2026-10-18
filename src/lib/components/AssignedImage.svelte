@@ -33,7 +33,7 @@
       if (isImageId) {
         // If it's a direct image ID, fetch the image metadata directly
         console.log(`Fetching direct image metadata for ID: ${locationId}`);
-        const response = await fetch(`/api/images/gallery`);
+        const response = await fetch(`/api/images/gallery?all=true`);
         if (!response.ok) {
           throw new Error(`Failed to fetch gallery: ${response.status} ${response.statusText}`);
         }

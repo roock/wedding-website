@@ -1,5 +1,9 @@
 // src/routes/api/images/gallery/+server.js
-export async function GET({ platform }) {
+import { fetchImageAssignments, getValidPageIds } from '$lib/imageAssignments';
+
+// Public gallery shows images not assigned to any page, or assigned to the gallery page.
+// Admin passes ?all=true to get every image.
+export async function GET({ url, platform }) {
   const requestId = crypto.randomUUID();
 
   // Helper function to create JSON responses
@@ -58,7 +62,18 @@ export async function GET({ platform }) {
     // Wait for all image data to be fetched
     const images = await Promise.all(imagePromises);
     // Filter out any null values (in case some images were not found)
-    const frontend_format = images.filter((img) => img !== null);
+    let frontend_format = images.filter((img) => img !== null);
+
+    if (url.searchParams.get('all') !== 'true') {
+      const assignments = await fetchImageAssignments(platform);
+      const validPageIds = await getValidPageIds(platform);
+      const hiddenImageIds = new Set(
+        Object.entries(assignments)
+          .filter(([pageId]) => pageId !== 'gallery' && validPageIds.has(pageId))
+          .map(([, imageId]) => imageId)
+      );
+      frontend_format = frontend_format.filter((img) => !hiddenImageIds.has(img.id));
+    }
 
     return jsonResponse({ images: frontend_format });
   } catch (error) {

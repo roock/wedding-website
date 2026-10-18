@@ -26,7 +26,7 @@
     error = null;
 
     try {
-      const response = await fetch('/api/images/gallery');
+      const response = await fetch('/api/images/gallery?all=true');
       if (!response.ok) {
         throw new Error('Failed to fetch images');
       }

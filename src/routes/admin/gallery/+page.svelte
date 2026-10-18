@@ -66,7 +66,7 @@
     error = null;
     console.log('Fetching images.');
     try {
-      const response = await fetch('/api/images/gallery');
+      const response = await fetch('/api/images/gallery?all=true');
       if (!response.ok) {
         throw new Error('Failed to fetch images');
       }
@@ -413,14 +413,14 @@
     }
   }
 
-  function getAssignedLocations(imageId) {
-    return Object.entries($assignments)
+  function getAssignedLocations(imageId, assignmentMap = $assignments) {
+    return Object.entries(assignmentMap)
       .filter(([, assignedId]) => assignedId === imageId)
       .map(([locationId]) => locationId);
   }
 
-  function getImageAssignmentInfo(imageId) {
-    const locations = getAssignedLocations(imageId.replace('image:', ''));
+  function getImageAssignmentInfo(imageId, assignmentMap) {
+    const locations = getAssignedLocations(imageId.replace('image:', ''), assignmentMap);
 
     if (locations.length === 0) {
       return 'Not assigned';
@@ -561,7 +561,7 @@
 
             <div class="flex items-center justify-between mb-2">
               <span class="text-xs text-gray-500">ID: {image.id}</span>
-              <span class="text-xs italic">{getImageAssignmentInfo(image.id)}</span>
+              <span class="text-xs italic">{getImageAssignmentInfo(image.id, $assignments)}</span>
             </div>
 
             <div class="flex flex-wrap gap-2">
