@@ -20,7 +20,7 @@ export async function POST({ request, platform }) {
     } else {
       // For confirmation emails, build with form data
       let rsvp = await platform.env.RSVPS.prepare(
-        "SELECT * FROM rsvps WHERE email IS NOT NULL AND email <> '' ORDER BY created_at DESC LIMIT 1"
+        "SELECT * FROM rsvp_guests WHERE email IS NOT NULL AND email <> '' ORDER BY created_at DESC LIMIT 1"
       ).first();
 
       if (!rsvp) {

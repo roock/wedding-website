@@ -39,29 +39,27 @@ export async function buildRsvpEmailContent(
   };
   console.log('Using settings:', settings);
 
-  // Check if this is a primary guest (their name is in the guest_list table's name column)
-  console.log('Checking if guest is primary...');
-  const guestCheck = await platform.env.RSVPS.prepare(
-    'SELECT * FROM guest_list WHERE LOWER(name) = LOWER(?)'
-  )
-    .bind(rsvpData.name)
-    .first();
-  console.log('Guest check result:', guestCheck);
-
-  // Get partner information if this is a primary guest
-  let partnerInfo = null;
-  if (guestCheck) {
-    console.log('Fetching partner information for primary guest...');
-    if (guestCheck.partner_name) {
-      const partnerResult = await platform.env.RSVPS.prepare(
-        'SELECT * FROM rsvps WHERE LOWER(name) = LOWER(?)'
+  // Additional guests share the primary guest's party; look them up via the party
+  console.log('Fetching additional guests for party...');
+  const partyId =
+    rsvpData.party_id ??
+    (rsvpData.email
+      ? await platform.env.RSVPS.prepare(
+          'SELECT party_id FROM rsvp_guests WHERE is_primary = 1 AND LOWER(email) = LOWER(?) LIMIT 1'
+        )
+          .bind(rsvpData.email)
+          .first()
+      : null
+    )?.party_id;
+  const additionalGuestsResult = partyId
+    ? await platform.env.RSVPS.prepare(
+        'SELECT * FROM rsvp_guests WHERE party_id = ? AND is_primary = 0 ORDER BY id'
       )
-        .bind(guestCheck.partner_name)
-        .first();
-      console.log('Partner result:', partnerResult);
-      partnerInfo = partnerResult || null;
-    }
-  }
+        .bind(partyId)
+        .all()
+    : null;
+  const additionalGuests = additionalGuestsResult?.results ?? [];
+  console.log('Additional guests:', additionalGuests);
 
   // Generate the form data section
   console.log('Generating form data section...');
@@ -87,26 +85,29 @@ export async function buildRsvpEmailContent(
       </ul>
       
       ${
-        partnerInfo
-          ? `
-        <h3>Partner's Information</h3>
+        additionalGuests.length > 0
+          ? additionalGuests
+              .map(
+                (guest) => `
+        <h3>${guest.name}</h3>
         <ul>
-          <li><strong>${settings.nameLabel}:</strong> ${partnerInfo.name}</li>
-          <li><strong>${settings.attendanceQuestion}:</strong> ${partnerInfo.attending === 'yes' ? 'Yes' : 'No'}</li>
+          <li><strong>${settings.attendanceQuestion}:</strong> ${guest.attending === 'yes' ? 'Yes' : 'No'}</li>
           ${
-            partnerInfo.attending === 'yes'
+            guest.attending === 'yes'
               ? `
-            <li><strong>${settings.vegetarianQuestion}:</strong> ${partnerInfo.is_vegetarian === 'yes' ? 'Yes' : 'No'}</li>
-            <li><strong>${settings.foodAllergiesLabel}:</strong> ${partnerInfo.food_allergies || 'None'}</li>
-            <li><strong>${settings.lodgingQuestion}:</strong> ${partnerInfo.lodging === 'yes' ? 'Yes' : 'No'}</li>
-            <li><strong>${settings.transportQuestion}:</strong> ${partnerInfo.using_transport === 'yes' ? 'Yes' : 'No'}</li>
-            <li><strong>${settings.songRequestLabel}:</strong> ${partnerInfo.song || 'None'}</li>
-            <li><strong>${settings.specialNotesLabel}:</strong> ${partnerInfo.special_notes || 'None'}</li>
+            <li><strong>${settings.vegetarianQuestion}:</strong> ${guest.is_vegetarian === 'yes' ? 'Yes' : 'No'}</li>
+            <li><strong>${settings.foodAllergiesLabel}:</strong> ${guest.food_allergies || 'None'}</li>
+            <li><strong>${settings.lodgingQuestion}:</strong> ${guest.lodging === 'yes' ? 'Yes' : 'No'}</li>
+            <li><strong>${settings.transportQuestion}:</strong> ${guest.using_transport === 'yes' ? 'Yes' : 'No'}</li>
+            <li><strong>${settings.songRequestLabel}:</strong> ${guest.song || 'None'}</li>
+            <li><strong>${settings.specialNotesLabel}:</strong> ${guest.special_notes || 'None'}</li>
           `
               : ''
           }
         </ul>
       `
+              )
+              .join('')
           : ''
       }
     </div>

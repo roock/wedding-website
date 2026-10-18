@@ -53,7 +53,7 @@ Configure labels for the following form fields:
 
 ### Viewing Responses
 
-- View all responses in a table format
+- View all responses in a table format. Each row is one guest; guests submitted together share a party (the primary guest plus any additional guests)
 - See response statistics:
   - Total responses
   - Total attending

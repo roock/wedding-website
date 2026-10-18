@@ -1,231 +1,132 @@
 // src/routes/api/rsvp/+server.js
 import { sendRsvpConfirmationEmail } from '$lib/services/email';
 
+const ANSWER_DEFAULTS = {
+  is_vegetarian: 'no',
+  food_allergies: '',
+  lodging: 'no',
+  using_transport: 'no',
+  song: '',
+  special_notes: ''
+};
+
+function jsonResponse(body, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' }
+  });
+}
+
+function toGuestRow(guest, isPrimary) {
+  return {
+    name: guest.name.trim(),
+    email: guest.email?.trim() || null,
+    is_primary: isPrimary ? 1 : 0,
+    attending: guest.attending,
+    is_vegetarian: guest.is_vegetarian || ANSWER_DEFAULTS.is_vegetarian,
+    food_allergies: guest.food_allergies || ANSWER_DEFAULTS.food_allergies,
+    lodging: guest.lodging || ANSWER_DEFAULTS.lodging,
+    using_transport: guest.using_transport || ANSWER_DEFAULTS.using_transport,
+    song: guest.song || ANSWER_DEFAULTS.song,
+    special_notes: guest.special_notes || ANSWER_DEFAULTS.special_notes
+  };
+}
+
+function validateGuest(guest, label) {
+  const missing = [];
+  if (!guest.name?.trim()) missing.push(`${label} name`);
+  if (!guest.attending) missing.push(`${label} attending`);
+  return missing;
+}
+
 export async function POST({ request, platform }) {
   const requestId = crypto.randomUUID();
   console.log(`[${requestId}] Received RSVP request`);
 
   try {
-    // Ensure the rsvps table has the proper structure
-    await platform.env.RSVPS.prepare(
-      `
-      CREATE TABLE IF NOT EXISTS rsvps (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        email TEXT,
-        attending TEXT NOT NULL,
-        guests INTEGER DEFAULT 0,
-        is_vegetarian TEXT DEFAULT 'no',
-        food_allergies TEXT,
-        lodging TEXT DEFAULT 'no',
-        using_transport TEXT DEFAULT 'no',
-        song TEXT,
-        special_notes TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE(name)
-      )
-    `
-    ).run();
-
     const data = await request.json();
-    console.log(`[${requestId}] RSVP data:`, data);
+    const { primary, skipEmail } = data;
 
-    // Validate primary guest data
-    if (!data.primary) {
-      return new Response(
-        JSON.stringify({
-          error: 'Missing required fields',
-          details: 'Missing: primary guest data'
-        }),
-        { status: 400 }
+    if (!primary) {
+      return jsonResponse(
+        { error: 'Missing required fields', details: 'Missing: primary guest data' },
+        400
       );
     }
 
-    const { primary, partner, skipEmail } = data;
-
-    // Validate required fields for primary guest
-    // Email is only required if we're sending a confirmation email
-    const requiredFields = ['name', 'attending'];
-    if (!skipEmail) {
-      requiredFields.push('email');
-    }
-    const missingFields = requiredFields.filter((field) => !primary[field]);
+    const missingFields = validateGuest(primary, 'Primary guest');
+    const additionalGuests = Array.isArray(data.guests) ? data.guests : [];
+    additionalGuests.forEach((guest, index) => {
+      missingFields.push(...validateGuest(guest, `Guest ${index + 1}`));
+    });
     if (missingFields.length > 0) {
-      return new Response(
-        JSON.stringify({
-          error: 'Missing required fields',
-          details: `Missing: ${missingFields.join(', ')}`
-        }),
-        { status: 400 }
+      return jsonResponse(
+        { error: 'Missing required fields', details: `Missing: ${missingFields.join(', ')}` },
+        400
       );
     }
 
-    // Check if guest exists in guest list (as primary guest or partner)
-    const guestCheck = await platform.env.RSVPS.prepare(
-      'SELECT * FROM guest_list WHERE LOWER(name) = LOWER(?) OR LOWER(partner_name) = LOWER(?)'
-    )
-      .bind(primary.name, primary.name)
-      .first();
+    const db = platform.env.RSVPS;
 
-    if (!guestCheck) {
-      return new Response(
-        JSON.stringify({
-          error: 'Guest not found',
-          details:
-            'Your name was not found in our guest list. Please contact us if you believe this is an error.'
-        }),
-        { status: 404 }
-      );
-    }
-
-    // Update guest list email if it's different or empty
-    if (primary.email && primary.email !== guestCheck.email) {
-      try {
-        await platform.env.RSVPS.prepare(
-          'UPDATE guest_list SET email = ? WHERE id = ?'
+    // A party is identified by the primary guest's email; resubmitting with the same email updates it
+    let existing = null;
+    if (primary.email?.trim()) {
+      existing = await db
+        .prepare(
+          'SELECT party_id FROM rsvp_guests WHERE is_primary = 1 AND LOWER(email) = LOWER(?) LIMIT 1'
         )
-          .bind(primary.email, guestCheck.id)
-          .run();
-        console.log(`[${requestId}] Updated guest list email for ${primary.name}`);
-      } catch (emailUpdateError) {
-        console.warn(`[${requestId}] Failed to update guest list email:`, emailUpdateError);
-        // Don't fail the request if guest list update fails
-      }
-    }
-
-    // Check if this is an update
-    let existingRsvp;
-    if (primary.email) {
-      existingRsvp = await platform.env.RSVPS.prepare(
-        'SELECT * FROM rsvps WHERE LOWER(name) = LOWER(?) OR LOWER(email) = LOWER(?)'
-      )
-        .bind(primary.name, primary.email)
-        .first();
-    } else {
-      // If no email provided, only check by name
-      existingRsvp = await platform.env.RSVPS.prepare(
-        'SELECT * FROM rsvps WHERE LOWER(name) = LOWER(?)'
-      )
-        .bind(primary.name)
+        .bind(primary.email.trim())
         .first();
     }
+    const isUpdate = !!existing;
 
-    const isUpdate = !!existingRsvp;
+    let partyId = existing?.party_id;
+    if (!isUpdate) {
+      const created = await db.prepare('INSERT INTO rsvp_parties DEFAULT VALUES').run();
+      partyId = created.meta.last_row_id;
+    }
 
-    // Insert or update primary guest's RSVP
+    const guestRows = [
+      toGuestRow(primary, true),
+      ...additionalGuests.map((guest) => toGuestRow(guest, false))
+    ];
+    const insertGuest = db.prepare(
+      `INSERT INTO rsvp_guests (
+        party_id, name, email, is_primary, attending, is_vegetarian,
+        food_allergies, lodging, using_transport, song, special_notes
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    );
+
+    const statements = [];
     if (isUpdate) {
-      await platform.env.RSVPS.prepare(
-        `UPDATE rsvps SET 
-          name = ?,
-          email = ?,
-          attending = ?,
-          guests = ?,
-          is_vegetarian = ?,
-          food_allergies = ?,
-          lodging = ?,
-          using_transport = ?,
-          song = ?,
-          special_notes = ?,
-          updated_at = CURRENT_TIMESTAMP
-        WHERE LOWER(name) = LOWER(?) OR LOWER(email) = LOWER(?)`
-      )
-        .bind(
-          primary.name,
-          primary.email,
-          primary.attending,
-          primary.guests || 0,
-          primary.is_vegetarian || 'no',
-          primary.food_allergies || '',
-          primary.lodging || 'no',
-          primary.using_transport || 'no',
-          primary.song || '',
-          primary.special_notes || '',
-          primary.name,
-          primary.email
-        )
-        .run();
-    } else {
-      await platform.env.RSVPS.prepare(
-        `INSERT INTO rsvps (
-          name, email, attending, guests, is_vegetarian, 
-          food_allergies, lodging, using_transport, song, special_notes,
-          created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
-      )
-        .bind(
-          primary.name,
-          primary.email,
-          primary.attending,
-          primary.guests || 0,
-          primary.is_vegetarian || 'no',
-          primary.food_allergies || '',
-          primary.lodging || 'no',
-          primary.using_transport || 'no',
-          primary.song || '',
-          primary.special_notes || ''
-        )
-        .run();
+      statements.push(
+        db.prepare('DELETE FROM rsvp_guests WHERE party_id = ?').bind(partyId),
+        db
+          .prepare('UPDATE rsvp_parties SET updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+          .bind(partyId)
+      );
     }
-
-    // Handle partner RSVP if provided
-    if (partner && partner.name) {
-      const partnerCheck = await platform.env.RSVPS.prepare(
-        'SELECT * FROM rsvps WHERE LOWER(name) = LOWER(?)'
-      )
-        .bind(partner.name)
-        .first();
-
-      if (partnerCheck) {
-        // Update existing partner RSVP
-        await platform.env.RSVPS.prepare(
-          `UPDATE rsvps SET 
-            attending = ?,
-            is_vegetarian = ?,
-            food_allergies = ?,
-            lodging = ?,
-            using_transport = ?,
-            song = ?,
-            special_notes = ?,
-            updated_at = CURRENT_TIMESTAMP
-          WHERE LOWER(name) = LOWER(?)`
+    for (const row of guestRows) {
+      statements.push(
+        insertGuest.bind(
+          partyId,
+          row.name,
+          row.email,
+          row.is_primary,
+          row.attending,
+          row.is_vegetarian,
+          row.food_allergies,
+          row.lodging,
+          row.using_transport,
+          row.song,
+          row.special_notes
         )
-          .bind(
-            partner.attending,
-            partner.is_vegetarian || 'no',
-            partner.food_allergies || '',
-            partner.lodging || 'no',
-            partner.using_transport || 'no',
-            partner.song || '',
-            partner.special_notes || '',
-            partner.name
-          )
-          .run();
-      } else {
-        // Insert new partner RSVP
-        await platform.env.RSVPS.prepare(
-          `INSERT INTO rsvps (
-            name, attending, is_vegetarian, food_allergies, 
-            lodging, using_transport, song, special_notes,
-            created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
-        )
-          .bind(
-            partner.name,
-            partner.attending,
-            partner.is_vegetarian || 'no',
-            partner.food_allergies || '',
-            partner.lodging || 'no',
-            partner.using_transport || 'no',
-            partner.song || '',
-            partner.special_notes || ''
-          )
-          .run();
-      }
+      );
     }
+    // D1 batches run atomically, so the party's guest set is never left half-written
+    await db.batch(statements);
 
-    // Send confirmation email only for primary guest (unless skipEmail flag is set)
-    if (primary.attending === 'yes' && !data.skipEmail) {
+    if (primary.attending === 'yes' && !skipEmail && primary.email?.trim()) {
       try {
         await sendRsvpConfirmationEmail(primary, platform);
         console.log(`[${requestId}] Confirmation email sent to ${primary.email}`);
@@ -235,22 +136,13 @@ export async function POST({ request, platform }) {
       }
     }
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        isUpdate,
-        message: isUpdate ? 'RSVP updated successfully' : 'RSVP submitted successfully'
-      }),
-      { status: 200 }
-    );
+    return jsonResponse({
+      success: true,
+      isUpdate,
+      message: isUpdate ? 'RSVP updated successfully' : 'RSVP submitted successfully'
+    });
   } catch (error) {
     console.error(`[${requestId}] RSVP Error:`, error);
-    return new Response(
-      JSON.stringify({
-        error: 'Failed to process RSVP',
-        details: error.message
-      }),
-      { status: 500 }
-    );
+    return jsonResponse({ error: 'Failed to process RSVP', details: error.message }, 500);
   }
 }

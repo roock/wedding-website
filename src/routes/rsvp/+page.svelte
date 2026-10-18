@@ -1,58 +1,38 @@
 <!-- src/routes/rsvp/+page.svelte -->
 <script>
   import { formSettings } from '$lib/stores/formSettings';
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount } from 'svelte';
   import { page } from '$app/stores';
+  import GuestRsvpFields from '$lib/components/GuestRsvpFields.svelte';
 
   // Compute couple names based on order preference
   $: coupleNames =
     $page.data.settings.nameOrder === 'groom-first'
       ? `${$page.data.settings.groomName} & ${$page.data.settings.brideName}`
       : `${$page.data.settings.brideName} & ${$page.data.settings.groomName}`;
+  $: isGerman = $page.data.settings.language === 'de';
 
-  let formData = {
+  const emptyGuest = () => ({
     name: '',
     email: '',
     attending: '',
-    guests: 0,
     is_vegetarian: '',
     food_allergies: '',
     lodging: '',
     using_transport: '',
     song: '',
     special_notes: ''
-  };
+  });
 
-  let partnerFormData = {
-    name: '',
-    attending: '',
-    is_vegetarian: '',
-    food_allergies: '',
-    lodging: '',
-    using_transport: '',
-    song: '',
-    special_notes: ''
-  };
+  let primary = emptyGuest();
+  // Each additional guest gets a stable key so Svelte keeps its DOM when others are removed
+  let guests = [];
+  let nextGuestKey = 0;
 
   let submitting = false;
   let submitted = false;
   let isUpdate = false;
   let error = null;
-  let nameSearchResults = [];
-  let searching = false;
-  let guestInfo = null;
-  let showPartnerForm = false;
-  let settings = {};
-
-  // Subscribe to form settings
-  const unsubscribe = formSettings.subscribe((value) => {
-    settings = value;
-  });
-
-  // Clean up subscription
-  onDestroy(() => {
-    unsubscribe();
-  });
 
   // Load form settings on mount
   onMount(async () => {
@@ -70,90 +50,30 @@
     }
   });
 
-  async function searchName() {
-    if (!formData.name.trim() || formData.name.trim().length < 2) {
-      nameSearchResults = [];
-      guestInfo = null;
-      showPartnerForm = false;
-      return;
-    }
-
-    searching = true;
-    try {
-      const response = await fetch(
-        `/api/guest-list/search?name=${encodeURIComponent(formData.name)}`
-      );
-      if (!response.ok) throw new Error('Failed to search guest list');
-      const data = await response.json();
-      nameSearchResults = data.results;
-    } catch (e) {
-      error = e.message;
-    } finally {
-      searching = false;
-    }
+  function addGuest() {
+    guests = [...guests, { key: nextGuestKey++, ...emptyGuest() }];
   }
 
-  function selectGuest(guest) {
-    formData.name = guest.name;
-    formData.email = guest.email || '';
-    guestInfo = guest;
-    nameSearchResults = [];
+  function removeGuest(key) {
+    guests = guests.filter((guest) => guest.key !== key);
+  }
 
-    if (guest.partner) {
-      showPartnerForm = true;
-      partnerFormData = {
-        name: guest.partner.name,
-        attending: '',
-        is_vegetarian: '',
-        food_allergies: '',
-        lodging: '',
-        using_transport: '',
-        song: '',
-        special_notes: ''
-      };
-    } else {
-      showPartnerForm = false;
-      partnerFormData = {
-        name: '',
-        attending: '',
-        is_vegetarian: '',
-        food_allergies: '',
-        lodging: '',
-        using_transport: '',
-        song: '',
-        special_notes: ''
-      };
+  function isAnswered(guest) {
+    if (!guest.attending) return false;
+    if (guest.attending === 'yes') {
+      return !!(guest.is_vegetarian && guest.lodging && guest.using_transport);
     }
+    return true;
   }
 
   async function handleSubmit() {
-    if (!guestInfo) {
-      error = $page.data.settings.language === 'de'
-        ? 'Bitte suche und wähle deinen Namen aus der Gästeliste aus'
-        : 'Please search and select your name from the guest list';
-      return;
-    }
+    const primaryValid = primary.name.trim() && isAnswered(primary);
+    const guestsValid = guests.every((guest) => guest.name.trim() && isAnswered(guest));
 
-    const primaryRequired = ['attending'];
-    if (formData.attending === 'yes') {
-      primaryRequired.push('is_vegetarian', 'lodging', 'using_transport');
-    }
-
-    const missingPrimary = primaryRequired.filter((f) => !formData[f]);
-
-    let missingPartner = [];
-    if (showPartnerForm && partnerFormData.name) {
-      const partnerRequired = ['attending'];
-      if (partnerFormData.attending === 'yes') {
-        partnerRequired.push('is_vegetarian', 'lodging', 'using_transport');
-      }
-      missingPartner = partnerRequired.filter((f) => !partnerFormData[f]);
-    }
-
-    if (missingPrimary.length > 0 || missingPartner.length > 0) {
-      error = $page.data.settings.language === 'de'
-        ? 'Bitte beantworte alle erforderlichen Fragen vor dem Absenden.'
-        : 'Please answer all required questions before submitting.';
+    if (!primaryValid || !guestsValid) {
+      error = isGerman
+        ? 'Bitte fülle alle erforderlichen Felder aus, bevor du absendest.'
+        : 'Please fill in all required fields before submitting.';
       return;
     }
 
@@ -161,13 +81,21 @@
     error = null;
 
     try {
-      // Prepare the request data
       const requestData = {
-        primary: formData,
-        partner: showPartnerForm && partnerFormData.name ? partnerFormData : null
+        primary,
+        guests: guests.map((guest) => ({
+          name: guest.name,
+          email: guest.email,
+          attending: guest.attending,
+          is_vegetarian: guest.is_vegetarian,
+          food_allergies: guest.food_allergies,
+          lodging: guest.lodging,
+          using_transport: guest.using_transport,
+          song: guest.song,
+          special_notes: guest.special_notes
+        }))
       };
 
-      // Submit RSVP in a single request
       const response = await fetch('/api/rsvp', {
         method: 'POST',
         headers: {
@@ -180,7 +108,7 @@
       let result;
       try {
         result = JSON.parse(responseText);
-      } catch (e) {
+      } catch {
         throw new Error(`Server returned invalid JSON: ${responseText}`);
       }
 
@@ -205,23 +133,21 @@
 
 <div class="max-w-2xl mx-auto px-4 py-12">
   <h1 class="text-4xl text-center font-light mb-12">
-    {$page.data.settings.language === 'de' ? 'Zusage' : 'RSVP'}
+    {isGerman ? 'Zusage' : 'RSVP'}
   </h1>
 
   {#if submitted}
     <div class="text-center py-12 bg-white rounded-lg shadow-sm">
       <h2 class="text-2xl mb-4">
-        {$page.data.settings.language === 'de'
-          ? 'Vielen Dank für deine Zusage!'
-          : 'Thank you for your RSVP!'}
+        {isGerman ? 'Vielen Dank für deine Zusage!' : 'Thank you for your RSVP!'}
       </h2>
       <p class="text-gray-600">
         {#if isUpdate}
-          {$page.data.settings.language === 'de'
+          {isGerman
             ? 'Deine Zusage wurde erfolgreich aktualisiert.'
             : 'Your RSVP has been successfully updated.'}
         {:else}
-          {$page.data.settings.language === 'de' ? 'Wir freuen uns, mit dir zu feiern!' : "We're excited to celebrate with you!"}
+          {isGerman ? 'Wir freuen uns, mit dir zu feiern!' : "We're excited to celebrate with you!"}
         {/if}
       </p>
       {#if isUpdate}
@@ -233,7 +159,7 @@
             error = null;
           }}
         >
-          {$page.data.settings.language === 'de' ? 'Eine weitere Änderung vornehmen' : 'Make another change'}
+          {isGerman ? 'Eine weitere Änderung vornehmen' : 'Make another change'}
         </button>
       {/if}
     </div>
@@ -242,425 +168,46 @@
       on:submit|preventDefault={handleSubmit}
       class="space-y-6 bg-white p-8 rounded-lg shadow-sm"
     >
-      <div class="space-y-2">
-        <label for="name" class="block">{settings.nameLabel || 'Full Name'}</label>
-        <div class="relative">
-          <input
-            type="text"
-            id="name"
-            bind:value={formData.name}
-            on:input={searchName}
-            required
-            autocomplete="off"
-            class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-opacity-50"
-            style="focus-ring-color: var(--color-primary)"
-            placeholder={$page.data.settings.language === 'de' ? 'Nach deinem Namen suchen...' : 'Search your name...'}
-          />
-          {#if searching}
-            <div class="absolute right-2 top-2">
-              <svg
-                class="animate-spin h-5 w-5 text-gray-500"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  class="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  stroke-width="4"
-                ></circle>
-                <path
-                  class="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                ></path>
-              </svg>
-            </div>
-          {/if}
-          {#if nameSearchResults.length > 0}
-            <div
-              class="absolute left-0 right-0 z-50 mt-1 bg-white border rounded-lg shadow-lg overflow-hidden"
-            >
-              {#each nameSearchResults as guest}
-                <button
-                  type="button"
-                  on:click={() => selectGuest(guest)}
-                  class="w-full text-left px-4 py-2 hover:bg-gray-100"
-                >
-                  {guest.name}
-                  {#if guest.partner}
-                    <span class="text-gray-500"> & {guest.partner.name}</span>
-                  {/if}
-                </button>
-              {/each}
-            </div>
-          {/if}
-        </div>
+      <GuestRsvpFields
+        guest={primary}
+        idPrefix="primary"
+        title={isGerman ? 'Deine Zusage' : 'Your RSVP'}
+        isPrimary={true}
+      />
+
+      {#each guests as guest, index (guest.key)}
+        <GuestRsvpFields
+          {guest}
+          idPrefix={`guest-${guest.key}`}
+          title={`${isGerman ? 'Weiterer Gast' : 'Additional guest'} ${index + 1}`}
+          isPrimary={false}
+          on:remove={() => removeGuest(guest.key)}
+        />
+      {/each}
+
+      <button
+        type="button"
+        on:click={addGuest}
+        class="w-full border-2 border-dashed border-gray-300 text-gray-600 px-4 py-2 rounded hover:border-primary hover:text-primary transition-colors"
+      >
+        + {isGerman ? 'Weiteren Gast hinzufügen' : 'Add another guest'}
+      </button>
+
+      <div class="pt-6">
+        <button
+          type="submit"
+          disabled={submitting}
+          class="w-full bg-primary text-white px-4 py-2 rounded hover:bg-primary/90 transition-colors disabled:opacity-50"
+        >
+          {submitting
+            ? isGerman
+              ? 'Wird eingereicht...'
+              : 'Submitting...'
+            : isGerman
+              ? 'Zusage einreichen'
+              : 'Submit RSVP'}
+        </button>
       </div>
-
-      {#if guestInfo}
-        <div class="space-y-6">
-          <!-- Primary Guest Form -->
-          <div class="bg-gray-50 p-6 rounded-lg space-y-6">
-            <div class="border-b pb-4">
-              <h3 class="text-xl font-medium">{guestInfo.name}'s RSVP</h3>
-            </div>
-
-            <div class="space-y-2">
-              <label for="email" class="block">{settings.emailLabel || 'Email'}</label>
-              <input
-                type="email"
-                id="email"
-                bind:value={formData.email}
-                required
-                autocomplete="off"
-                class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-opacity-50"
-                style="focus-ring-color: var(--color-primary)"
-              />
-            </div>
-
-            <div class="space-y-2">
-              <label class="block">{settings.attendanceQuestion || 'Will you be attending?'}</label>
-              <div class="space-x-4">
-                <label class="inline-flex items-center">
-                  <input
-                    type="radio"
-                    bind:group={formData.attending}
-                    value="yes"
-                    class="mr-2"
-                    required
-                  />
-                  {$page.data.settings.language === 'de' ? 'Ja' : 'Yes'}
-                </label>
-                <label class="inline-flex items-center">
-                  <input type="radio" bind:group={formData.attending} value="no" class="mr-2" />
-                  {$page.data.settings.language === 'de' ? 'Nein' : 'No'}
-                </label>
-              </div>
-            </div>
-
-            {#if formData.attending === 'yes'}
-              <div class="space-y-2">
-                <label class="block">{settings.vegetarianQuestion || 'Are you vegetarian?'}</label>
-                <div class="space-x-4">
-                  <label class="inline-flex items-center">
-                    <input
-                      type="radio"
-                      bind:group={formData.is_vegetarian}
-                      value="yes"
-                      class="mr-2"
-                      required
-                    />
-                    {$page.data.settings.language === 'de' ? 'Ja' : 'Yes'}
-                  </label>
-                  <label class="inline-flex items-center">
-                    <input
-                      type="radio"
-                      bind:group={formData.is_vegetarian}
-                      value="no"
-                      class="mr-2"
-                    />
-                    {$page.data.settings.language === 'de' ? 'Nein' : 'No'}
-                  </label>
-                </div>
-              </div>
-
-              <div class="space-y-2">
-                <label for="food_allergies" class="block"
-                  >{settings.foodAllergiesLabel || 'Any food allergies?'}</label
-                >
-                <textarea
-                  id="food_allergies"
-                  bind:value={formData.food_allergies}
-                  rows="3"
-                  autocomplete="off"
-                  class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-opacity-50"
-                  style="focus-ring-color: var(--color-primary)"
-                ></textarea>
-              </div>
-
-              <div class="space-y-2">
-                <label class="block"
-                  >{settings.lodgingQuestion ||
-                    'Are you planning on staying at the lodging?'}</label
-                >
-                <div class="space-x-4">
-                  <label class="inline-flex items-center">
-                    <input
-                      type="radio"
-                      bind:group={formData.lodging}
-                      value="yes"
-                      class="mr-2"
-                      required
-                    />
-                    {$page.data.settings.language === 'de' ? 'Ja' : 'Yes'}
-                  </label>
-                  <label class="inline-flex items-center">
-                    <input type="radio" bind:group={formData.lodging} value="no" class="mr-2" />
-                    {$page.data.settings.language === 'de' ? 'Nein' : 'No'}
-                  </label>
-                </div>
-              </div>
-
-              <div class="space-y-2">
-                <label class="block"
-                  >{settings.transportQuestion ||
-                    'Are you planning on joining the transport to and from our lodging?'}</label
-                >
-                <div class="space-x-4">
-                  <label class="inline-flex items-center">
-                    <input
-                      type="radio"
-                      bind:group={formData.using_transport}
-                      value="yes"
-                      class="mr-2"
-                      required
-                    />
-                    {$page.data.settings.language === 'de' ? 'Ja' : 'Yes'}
-                  </label>
-                  <label class="inline-flex items-center">
-                    <input
-                      type="radio"
-                      bind:group={formData.using_transport}
-                      value="no"
-                      class="mr-2"
-                    />
-                    {$page.data.settings.language === 'de' ? 'Nein' : 'No'}
-                  </label>
-                </div>
-              </div>
-
-              <div class="space-y-2">
-                <label for="song" class="block"
-                  >{settings.songRequestLabel ||
-                    'What song will get you on the dance floor?'}</label
-                >
-                <input
-                  type="text"
-                  id="song"
-                  bind:value={formData.song}
-                  autocomplete="off"
-                  class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-opacity-50"
-                  style="focus-ring-color: var(--color-primary)"
-                />
-              </div>
-
-              <div class="space-y-2">
-                <label for="special_notes" class="block"
-                  >{settings.specialNotesLabel || 'Any special note for the couple?'}</label
-                >
-                <textarea
-                  id="special_notes"
-                  bind:value={formData.special_notes}
-                  rows="3"
-                  autocomplete="off"
-                  class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-opacity-50"
-                  style="focus-ring-color: var(--color-primary)"
-                ></textarea>
-              </div>
-            {/if}
-          </div>
-
-          {#if showPartnerForm}
-            <!-- Partner Form -->
-            <div class="bg-gray-50 p-6 rounded-lg space-y-6">
-              <div class="border-b pb-4">
-                <h3 class="text-xl font-medium">{partnerFormData.name}'s RSVP</h3>
-              </div>
-
-              <div class="space-y-2">
-                <label class="block">
-                  {(settings.attendanceQuestion || 'Will you be attending?')
-                    .replace(/\byou\b/gi, 'they')
-                    .replace(/\bYou\b/g, 'They')}
-                </label>
-                <div class="space-x-4">
-                  <label class="inline-flex items-center">
-                    <input
-                      type="radio"
-                      bind:group={partnerFormData.attending}
-                      value="yes"
-                      class="mr-2"
-                      required
-                    />
-                    {$page.data.settings.language === 'de' ? 'Ja' : 'Yes'}
-                  </label>
-                  <label class="inline-flex items-center">
-                    <input
-                      type="radio"
-                      bind:group={partnerFormData.attending}
-                      value="no"
-                      class="mr-2"
-                    />
-                    {$page.data.settings.language === 'de' ? 'Nein' : 'No'}
-                  </label>
-                </div>
-              </div>
-
-              {#if partnerFormData.attending === 'yes'}
-                <div class="space-y-2">
-                  <label class="block">
-                    {(settings.vegetarianQuestion || 'Are you vegetarian?')
-                      .replace(/\byou\b/gi, 'they')
-                      .replace(/\bYou\b/g, 'They')
-                      .replace(/\bAre\b/g, 'Are')}
-                  </label>
-                  <div class="space-x-4">
-                    <label class="inline-flex items-center">
-                      <input
-                        type="radio"
-                        bind:group={partnerFormData.is_vegetarian}
-                        value="yes"
-                        class="mr-2"
-                        required
-                      />
-                      {$page.data.settings.language === 'de' ? 'Ja' : 'Yes'}
-                    </label>
-                    <label class="inline-flex items-center">
-                      <input
-                        type="radio"
-                        bind:group={partnerFormData.is_vegetarian}
-                        value="no"
-                        class="mr-2"
-                      />
-                      {$page.data.settings.language === 'de' ? 'Nein' : 'No'}
-                    </label>
-                  </div>
-                </div>
-
-                <div class="space-y-2">
-                  <label for="partner_food_allergies" class="block">
-                    {settings.foodAllergiesLabel || 'Any food allergies?'}
-                  </label>
-                  <textarea
-                    id="partner_food_allergies"
-                    bind:value={partnerFormData.food_allergies}
-                    rows="3"
-                    autocomplete="off"
-                    class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-opacity-50"
-                    style="focus-ring-color: var(--color-primary)"
-                  ></textarea>
-                </div>
-
-                <div class="space-y-2">
-                  <label class="block">
-                    {(settings.lodgingQuestion || 'Are you planning on staying at the lodging?')
-                      .replace(/\byou\b/gi, 'they')
-                      .replace(/\bYou\b/g, 'They')
-                      .replace(/\bAre\b/g, 'Are')
-                      .replace(/\byour\b/g, 'their')}
-                  </label>
-                  <div class="space-x-4">
-                    <label class="inline-flex items-center">
-                      <input
-                        type="radio"
-                        bind:group={partnerFormData.lodging}
-                        value="yes"
-                        class="mr-2"
-                        required
-                      />
-                      {$page.data.settings.language === 'de' ? 'Ja' : 'Yes'}
-                    </label>
-                    <label class="inline-flex items-center">
-                      <input
-                        type="radio"
-                        bind:group={partnerFormData.lodging}
-                        value="no"
-                        class="mr-2"
-                      />
-                      {$page.data.settings.language === 'de' ? 'Nein' : 'No'}
-                    </label>
-                  </div>
-                </div>
-
-                <div class="space-y-2">
-                  <label class="block">
-                    {(
-                      settings.transportQuestion ||
-                      'Are you planning on joining the transport to and from our lodging?'
-                    )
-                      .replace(/\byou\b/gi, 'they')
-                      .replace(/\bYou\b/g, 'They')
-                      .replace(/\bAre\b/g, 'Are')}
-                  </label>
-                  <div class="space-x-4">
-                    <label class="inline-flex items-center">
-                      <input
-                        type="radio"
-                        bind:group={partnerFormData.using_transport}
-                        value="yes"
-                        class="mr-2"
-                        required
-                      />
-                      {$page.data.settings.language === 'de' ? 'Ja' : 'Yes'}
-                    </label>
-                    <label class="inline-flex items-center">
-                      <input
-                        type="radio"
-                        bind:group={partnerFormData.using_transport}
-                        value="no"
-                        class="mr-2"
-                      />
-                      {$page.data.settings.language === 'de' ? 'Nein' : 'No'}
-                    </label>
-                  </div>
-                </div>
-
-                <div class="space-y-2">
-                  <label for="partner_song" class="block">
-                    {(settings.songRequestLabel || 'What song will get you on the dance floor?')
-                      .replace(/\byou\b/gi, 'them')
-                      .replace(/\bYou\b/g, 'They')}
-                  </label>
-                  <input
-                    type="text"
-                    id="partner_song"
-                    bind:value={partnerFormData.song}
-                    autocomplete="off"
-                    class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-opacity-50"
-                    style="focus-ring-color: var(--color-primary)"
-                  />
-                </div>
-
-                <div class="space-y-2">
-                  <label for="partner_special_notes" class="block">
-                    {settings.specialNotesLabel || 'Any special note for the couple?'}
-                  </label>
-                  <textarea
-                    id="partner_special_notes"
-                    bind:value={partnerFormData.special_notes}
-                    rows="3"
-                    autocomplete="off"
-                    class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-opacity-50"
-                    style="focus-ring-color: var(--color-primary)"
-                  ></textarea>
-                </div>
-              {/if}
-            </div>
-          {/if}
-
-          <div class="pt-6">
-            <button
-              type="submit"
-              disabled={submitting}
-              class="w-full bg-primary text-white px-4 py-2 rounded hover:bg-primary/90 transition-colors disabled:opacity-50"
-            >
-              {submitting ? ($page.data.settings.language === 'de' ? 'Wird eingereicht...' : 'Submitting...') : ($page.data.settings.language === 'de' ? 'Zusage einreichen' : 'Submit RSVP')}
-            </button>
-          </div>
-        </div>
-      {:else}
-        <div class="text-center py-8 text-gray-500">
-          <p>
-            {$page.data.settings.language === 'de'
-              ? 'Bitte suche deinen Namen und wähle ihn aus, um mit deiner Zusage fortzufahren.'
-              : 'Please search and select your name to continue with your RSVP.'}
-          </p>
-        </div>
-      {/if}
 
       {#if error}
         <div class="bg-red-50 text-red-600 p-4 rounded mb-6">
