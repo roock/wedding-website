@@ -1,0 +1,25 @@
+{
+  "name": "wedding-website",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm",
+  "features": {
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  "forwardPorts": [5173, 4173, 8787],
+  "portsAttributes": {
+    "5173": { "label": "Vite dev server" },
+    "4173": { "label": "Vite preview" },
+    "8787": { "label": "Wrangler dev" }
+  },
+  "postCreateCommand": "npm ci",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "svelte.svelte-vscode",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "bradlc.vscode-tailwindcss"
+      ]
+    }
+  },
+  "remoteUser": "node"
+}
