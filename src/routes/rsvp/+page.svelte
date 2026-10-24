@@ -122,7 +122,7 @@
 </svelte:head>
 
 <div class="max-w-2xl mx-auto px-4 py-12">
-  <h1 class="text-4xl text-center font-light mb-12">
+  <h1 class="text-[2rem] leading-[1.2] text-center font-bold mb-12">
     {isGerman ? 'Antwort' : 'RSVP'}
   </h1>
 
