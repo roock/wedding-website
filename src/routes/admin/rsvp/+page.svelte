@@ -254,6 +254,14 @@
     }
   }
 
+  // Other guests submitted in the same RSVP (party), keyed by guest id
+  $: partyMatesById = Object.fromEntries(
+    rsvps.map((rsvp) => [
+      rsvp.id,
+      rsvps.filter((other) => other.party_id === rsvp.party_id && other.id !== rsvp.id)
+    ])
+  );
+
   function getPartnerName(rsvp) {
     const guest = guestList.find((g) => g.name === rsvp.name);
     return guest?.partner_name || '';
@@ -983,6 +991,13 @@
                   <!-- View Mode -->
                   <td class="px-6 py-4">
                     <div class="font-medium">{rsvp.name}</div>
+                    {#if partyMatesById[rsvp.id]?.length}
+                      <div class="text-xs text-gray-500">
+                        Registered together with: {partyMatesById[rsvp.id]
+                          .map((mate) => mate.name)
+                          .join(', ')}
+                      </div>
+                    {/if}
                   </td>
                   <td class="px-6 py-4">{rsvp.email}</td>
                   <td class="px-6 py-4">
