@@ -1,0 +1,17 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "D1: apply migrations (local)",
+      "type": "shell",
+      "command": "npx wrangler d1 migrations apply RSVPS --local",
+      "problemMatcher": []
+    },
+    {
+      "label": "Wrangler: dev (local)",
+      "type": "shell",
+      "command": "npm run build && npx wrangler dev --local",
+      "problemMatcher": []
+    }
+  ]
+}

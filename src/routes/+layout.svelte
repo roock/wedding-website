@@ -12,7 +12,6 @@
 
   // Extract custom fonts from theme for loading
   let customFontsToLoad = [];
-  let allPages = [];
 
   // Process theme fonts to determine which custom fonts need to be loaded
   function processThemeFonts(theme) {
@@ -44,38 +43,18 @@
     return customFonts;
   }
 
-  // Load custom pages
-  async function loadCustomPages() {
-    try {
-      // Load custom pages
-      const pagesResponse = await fetch('/api/admin/pages');
-      if (!pagesResponse.ok) throw new Error('Failed to load custom pages');
-      const pagesData = await pagesResponse.json();
-      const customPages = pagesData.pages.sort((a, b) => a.order - b.order);
-
-      // Get default pages from settings, filter out hidden ones
-      const defaultPages = data.settings.defaultPages
-        .filter((page) => !page.hidden)
-        .sort((a, b) => a.order - b.order);
-
-      // Combine and sort all pages (excluding hidden pages)
-      allPages = [...defaultPages, ...customPages].sort((a, b) => a.order - b.order);
-    } catch (error) {
-      console.error('Error loading pages:', error);
-      // If there's an error, use the default pages from settings (excluding hidden)
-      allPages = data.settings.defaultPages
-        .filter((page) => !page.hidden)
-        .sort((a, b) => a.order - b.order);
-    }
-  }
+  // Nav pages come from the server load (default pages minus hidden ones, plus custom pages)
+  $: allPages = [
+    ...data.settings.defaultPages.filter((page) => !page.hidden),
+    ...(data.customPages ?? [])
+  ].sort((a, b) => a.order - b.order);
 
   // Apply theme when component mounts
-  onMount(async () => {
+  onMount(() => {
     if (data.theme) {
       applyTheme(data.theme);
       customFontsToLoad = processThemeFonts(data.theme);
     }
-    await loadCustomPages();
     initRouterDebug();
   });
 

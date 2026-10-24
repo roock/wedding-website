@@ -67,3 +67,10 @@ Feature-specific admin behavior is documented in `docs/`: `admin-settings-guide.
 `theme-system-guide.md`, `font-customization-guide.md`, `content-setup-guide.md`,
 `gallery-guide.md`, `rsvp-admin-guide.md`. Check the relevant guide before changing an admin
 feature's behavior, and update it if the change affects documented user-facing behavior.
+
+## Commit messages
+
+Use [Conventional Commits](https://www.conventionalcommits.org/) format for all commit messages,
+e.g. `feat(admin): add gallery bulk delete`, `fix(rsvp): handle empty guest list`,
+`chore: update devcontainer post-create command`. Use types such as `feat`, `fix`, `docs`,
+`refactor`, `test`, `build`, `ci`, `chore`, and `style`.

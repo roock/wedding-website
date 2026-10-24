@@ -1,7 +1,34 @@
 // routes/+layout.server.js
 import { env } from '$env/dynamic/private';
 
-export async function load({ url, platform, fetch }) {
+// Public nav data is read from KV here instead of calling /api/admin/* (behind Cloudflare Access)
+async function loadCustomPages(platform) {
+  if (!platform?.env?.IMAGES_KV) return [];
+
+  try {
+    const pagesList = await platform.env.IMAGES_KV.get('page_builder_pages_list', 'json');
+    return (pagesList ?? []).map((page) => ({
+      id: page.id,
+      name: page.name,
+      slug: page.slug,
+      order: page.order,
+      lastModified: page.lastModified || null
+    }));
+  } catch (error) {
+    console.error('Failed to load custom pages:', error);
+    return [];
+  }
+}
+
+export async function load(event) {
+  const [siteData, customPages] = await Promise.all([
+    loadSiteData(event),
+    loadCustomPages(event.platform)
+  ]);
+  return { ...siteData, customPages };
+}
+
+async function loadSiteData({ url, platform, fetch }) {
   // CF_PAGES_BRANCH is automatically set by Cloudflare Pages
   const branch = env.CF_PAGES_BRANCH || '';
   const isPreview = branch !== 'main' && branch !== 'master';

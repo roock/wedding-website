@@ -10,12 +10,6 @@
       ? `${$page.data.settings.groomName} & ${$page.data.settings.brideName}`
       : `${$page.data.settings.brideName} & ${$page.data.settings.groomName}`;
 
-  export const load = async ({ fetch }) => {
-    const response = await fetch('/api/admin/settings');
-    const { settings } = await response.json();
-    return { settings };
-  };
-
   function toggleVenmo() {
     showVenmo = !showVenmo;
   }
